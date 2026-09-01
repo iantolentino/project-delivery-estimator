@@ -490,13 +490,6 @@
 
     .assumption-list li + li { margin-top: 7px; }
 
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
     .button {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -568,7 +561,6 @@
       .tier-heading { display: block; }
       .tier-heading p { margin-top: 4px; }
       .legend { margin-top: 12px; }
-      .actions .button { width: 100%; }
       .status { width: 100%; text-align: center; }
     }
 
@@ -583,7 +575,7 @@
       .hero { margin-bottom: 12px; }
       h1 { font-size: 28px; }
       .subtitle { font-size: 12px; margin-top: 6px; }
-      .ai-panel, .controls, .actions, footer { display: none !important; }
+      .ai-panel, .controls, footer { display: none !important; }
       .panel { box-shadow: none; border-color: #94a3b8; }
       .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
       .summary-card { min-height: auto; padding: 12px; }
@@ -780,12 +772,6 @@
       </article>
     </section>
 
-    <div class="actions">
-      <button class="button primary" id="copySummary" type="button">Copy client summary</button>
-      <button class="button" id="copyLink" type="button">Copy share link</button>
-      <button class="button" id="printPage" type="button">Print / Save PDF</button>
-      <span class="status" id="status" role="status" aria-live="polite"></span>
-    </div>
     </div>
 
     <footer>This is a planning estimate, not a fixed-price commitment. Final dates should be confirmed after requirements and acceptance criteria are approved.</footer>
@@ -1177,37 +1163,10 @@
       $("projectName").focus();
     }
 
-    async function copyText(text, confirmation) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (error) {
-        const field = document.createElement("textarea");
-        field.value = text;
-        field.style.position = "fixed";
-        field.style.opacity = "0";
-        document.body.appendChild(field);
-        field.select();
-        document.execCommand("copy");
-        field.remove();
-      }
-      $("status").textContent = confirmation;
-      window.setTimeout(() => { $("status").textContent = ""; }, 3000);
-    }
-
     controls.forEach((control) => control.addEventListener("input", render));
     document.querySelectorAll('input[name="tier"]').forEach((control) => control.addEventListener("change", render));
     $("analyzeProject").addEventListener("click", analyzeProject);
     $("editProject").addEventListener("click", editProject);
-
-    $("copySummary").addEventListener("click", () => {
-      const estimate = calculate();
-      const project = $("projectName").value.trim() || "New System";
-      const summary = `${project}: The ${estimate.preset.name} delivery estimate is ${formatRange(estimate.lowDuration, estimate.highDuration)} from the start date of ${formatDate(estimate.startDate)}. The working target is ${formatDate(estimate.target)}. For external commitment, we recommend ${formatDate(estimate.safe)}, using the upper estimate or ${estimate.buffer}% contingency, whichever is later. The dates assume approved requirements, timely feedback, and no major scope changes.`;
-      copyText(summary, "Client summary copied.");
-    });
-
-    $("copyLink").addEventListener("click", () => copyText(location.href, "Share link copied."));
-    $("printPage").addEventListener("click", () => window.print());
 
     readQuery();
     render();
