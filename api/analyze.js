@@ -5,6 +5,12 @@ const DELIVERY_LABELS = {
   production: "Production-ready recommended",
   scalable: "Scalable recommended",
 };
+const CONTINGENCY_OPTIONS = new Set([10, 15, 20, 30]);
+const DURATION_BOUNDS = {
+  mvp: [8.5, 17.5],
+  production: [13.5, 30],
+  scalable: [20.5, 50],
+};
 
 const buckets = globalThis.__deliveryEstimatorRateBuckets || new Map();
 globalThis.__deliveryEstimatorRateBuckets = buckets;
@@ -77,19 +83,22 @@ module.exports = async function handler(request, response) {
       complexity: { type: "string", enum: ["simple", "standard", "complex"] },
       delivery_level: { type: "string", enum: ["mvp", "production", "scalable"] },
       confidence: { type: "integer", minimum: 0, maximum: 100 },
+      duration_low_weeks: { type: "number", minimum: 4, maximum: 60 },
+      duration_high_weeks: { type: "number", minimum: 4, maximum: 60 },
+      recommended_contingency: { type: "integer", enum: [10, 15, 20, 30] },
       summary: { type: "string" },
       reasons: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
       risks: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
       missing_specifications: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
       suggested_scope: { type: "string" },
     },
-    required: ["complexity", "delivery_level", "confidence", "summary", "reasons", "risks", "missing_specifications", "suggested_scope"],
+    required: ["complexity", "delivery_level", "confidence", "duration_low_weeks", "duration_high_weeks", "recommended_contingency", "summary", "reasons", "risks", "missing_specifications", "suggested_scope"],
   };
 
   const instructions = `You are a senior software estimator helping a solo developer assess a proposed information system.
 Classify complexity as exactly simple, standard, or complex. Recommend exactly one delivery level: mvp, production, or scalable.
 Consider workflows, user roles, integrations, data sensitivity, payments, real-time features, mobile or offline needs, reporting, migration, compliance, expected scale, and ambiguity. Identify 2 to 5 missing specifications that could materially change the estimate; do not invent answers for unknowns.
-Be conservative and never promise a deadline. Short specifications are allowed, but missing detail should lower confidence and be called out in missing_specifications. The delivery plan will use these solo-developer ranges: MVP 10-14 weeks, production-ready 4-6 months, scalable 6-10 months.
+Be conservative and never promise a deadline. Short specifications are allowed, but missing detail should lower confidence and be called out in missing_specifications. Estimate duration_low_weeks and duration_high_weeks for a solo developer before any team-size adjustment. Use these realistic guardrails: MVP is normally 10-14 weeks, production-ready is normally 16-24 weeks (4-6 months), and scalable is normally 24-40 weeks (6-10 months). A simple scope may be lower but never below 8.5, 13.5, or 20.5 weeks respectively; a complex scope may be higher but never above 17.5, 30, or 50 weeks respectively. Choose recommended_contingency as 10 for stable, 15 for normal, 20 for evolving, or 30 for high-uncertainty scope.
 Return concise, client-safe language in the requested JSON schema.`;
 
   const controller = new AbortController();
@@ -128,16 +137,27 @@ Return concise, client-safe language in the requested JSON schema.`;
     const reasons = cleanList(analysis.reasons);
     const risks = cleanList(analysis.risks);
     const missingSpecifications = cleanList(analysis.missing_specifications);
+    const durationBounds = DURATION_BOUNDS[deliveryLevel];
+    const rawLowDuration = Number(analysis.duration_low_weeks);
+    const rawHighDuration = Number(analysis.duration_high_weeks);
+    const recommendedContingency = Number(analysis.recommended_contingency);
 
-    if (!ALLOWED_COMPLEXITY.has(complexity) || !ALLOWED_LEVELS.has(deliveryLevel) || reasons.length < 2 || risks.length < 2 || missingSpecifications.length < 2) {
+    if (!ALLOWED_COMPLEXITY.has(complexity) || !ALLOWED_LEVELS.has(deliveryLevel) || !durationBounds || !Number.isFinite(rawLowDuration) || !Number.isFinite(rawHighDuration) || rawLowDuration > rawHighDuration || !CONTINGENCY_OPTIONS.has(recommendedContingency) || reasons.length < 2 || risks.length < 2 || missingSpecifications.length < 2) {
       return send(response, 502, { error: "Gemini returned an incomplete recommendation. Please try again." });
     }
+
+    const roundHalf = (value) => Math.round(value * 2) / 2;
+    const lowDuration = roundHalf(Math.max(durationBounds[0], Math.min(durationBounds[1], rawLowDuration)));
+    const highDuration = roundHalf(Math.max(lowDuration, Math.min(durationBounds[1], rawHighDuration)));
 
     return send(response, 200, {
       complexity,
       delivery_level: deliveryLevel,
       delivery_label: DELIVERY_LABELS[deliveryLevel],
       confidence: Math.max(0, Math.min(100, Number.parseInt(analysis.confidence, 10) || 0)),
+      duration_low_weeks: lowDuration,
+      duration_high_weeks: highDuration,
+      recommended_contingency: recommendedContingency,
       summary: String(analysis.summary || "").trim().slice(0, 600),
       reasons,
       risks,

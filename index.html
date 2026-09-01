@@ -611,6 +611,7 @@
     </header>
 
     <section class="panel ai-panel" aria-labelledby="ai-heading">
+      <div id="aiIntake">
       <div class="ai-heading">
         <div>
           <h2 id="ai-heading">Generate a delivery plan with AI</h2>
@@ -628,12 +629,15 @@
         <button class="button primary" id="analyzeProject" type="button">Analyze and generate Gantt chart</button>
         <span class="status" id="aiStatus" role="status" aria-live="polite"></span>
       </div>
+      </div>
       <div class="ai-result" id="aiResult" hidden>
         <div class="ai-result-head">
           <h3>AI recommendation</h3>
           <span class="analysis-pill" id="aiDifficulty"></span>
           <span class="analysis-pill" id="aiLevel"></span>
           <span class="analysis-pill" id="aiConfidence"></span>
+          <span class="analysis-pill" id="aiDuration"></span>
+          <span class="analysis-pill" id="aiBuffer"></span>
         </div>
         <p class="ai-summary" id="aiSummary"></p>
         <div class="ai-result-grid">
@@ -651,15 +655,19 @@
           </div>
         </div>
         <p class="ai-scope"><strong>Suggested scope:</strong> <span id="aiScope"></span></p>
+        <div class="ai-actions">
+          <button class="button" id="editProject" type="button">Edit project and re-analyze</button>
+        </div>
       </div>
     </section>
 
+    <div id="estimateOutput" hidden>
     <section class="panel controls" aria-labelledby="estimate-settings">
       <h2 id="estimate-settings" class="sr-only">Estimate settings</h2>
       <div class="field-grid adjustment-grid">
         <div>
-          <label for="kickoffDate">Kickoff date</label>
-          <input id="kickoffDate" type="date">
+          <label for="startDate">Start date</label>
+          <input id="startDate" type="date">
         </div>
         <div>
           <label for="complexity">System complexity</label>
@@ -777,6 +785,7 @@
       <button class="button" id="printPage" type="button">Print / Save PDF</button>
       <span class="status" id="status" role="status" aria-live="polite"></span>
     </div>
+    </div>
 
     <footer>This is a planning estimate, not a fixed-price commitment. Final dates should be confirmed after requirements and acceptance criteria are approved.</footer>
   </main>
@@ -875,7 +884,9 @@
     };
 
     const $ = (id) => document.getElementById(id);
-    const controls = [$("projectName"), $("kickoffDate"), $("complexity"), $("team"), $("buffer")];
+    let hasAnalysis = false;
+    let aiEstimate = null;
+    const controls = [$("projectName"), $("startDate"), $("complexity"), $("team"), $("buffer")];
 
     function localDate(value) {
       const [year, month, day] = value.split("-").map(Number);
@@ -941,12 +952,23 @@
       return preset.soloRange.map((weeks) => adjustedWeeks(weeks, complexity, team));
     }
 
+    function estimateRangeForTier(tier, complexity, team) {
+      const aiRangeIsActive = aiEstimate
+        && aiEstimate.delivery_level === tier
+        && aiEstimate.complexity === $("complexity").value;
+      const baseRange = aiRangeIsActive
+        ? [aiEstimate.duration_low_weeks, aiEstimate.duration_high_weeks]
+        : adjustedRange(presets[tier], complexity, team);
+      return baseRange.map((weeks) => Math.ceil(weeks * (aiRangeIsActive ? team.factor : 1) * 2) / 2);
+    }
+
     function readQuery() {
       const query = new URLSearchParams(location.search);
       const tier = query.get("tier");
       if (presets[tier]) $("tier-" + tier).checked = true;
       if (query.get("project")) $("projectName").value = query.get("project").slice(0, 80);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(query.get("start") || "")) $("kickoffDate").value = query.get("start");
+      if (/^\d{4}-\d{2}-\d{2}$/.test(query.get("start") || "")) $("startDate").value = query.get("start");
+      hasAnalysis = query.get("ready") === "1";
       if (complexityOptions[query.get("complexity")]) $("complexity").value = query.get("complexity");
       if (query.get("v") === "2" && teamOptions[query.get("team")]) $("team").value = query.get("team");
       if (["10", "15", "20", "30"].includes(query.get("buffer"))) $("buffer").value = query.get("buffer");
@@ -957,7 +979,8 @@
       query.set("project", $("projectName").value.trim() || "New System");
       query.set("v", "2");
       query.set("tier", selectedTier());
-      query.set("start", $("kickoffDate").value);
+      query.set("start", $("startDate").value);
+      if (hasAnalysis) query.set("ready", "1");
       query.set("complexity", $("complexity").value);
       query.set("team", $("team").value);
       query.set("buffer", $("buffer").value);
@@ -973,14 +996,14 @@
       const complexity = complexityOptions[$("complexity").value];
       const team = teamOptions[$("team").value];
       const buffer = Number($("buffer").value);
-      const [lowDuration, highDuration] = adjustedRange(preset, complexity, team);
+      const [lowDuration, highDuration] = estimateRangeForTier(selectedTier(), complexity, team);
       const duration = Math.ceil(((lowDuration + highDuration) / 2) * 2) / 2;
       const bufferedDuration = Math.ceil(duration * (1 + buffer / 100) * 2) / 2;
       const safeDuration = Math.max(highDuration, bufferedDuration);
-      const kickoff = localDate($("kickoffDate").value);
-      const target = addDays(kickoff, Math.round(duration * 7) - 1);
-      const safe = addDays(kickoff, Math.round(safeDuration * 7) - 1);
-      return { preset, complexity, team, buffer, lowDuration, highDuration, duration, safeDuration, kickoff, target, safe, scale: duration / preset.weeks };
+      const startDate = localDate($("startDate").value);
+      const target = addDays(startDate, Math.round(duration * 7) - 1);
+      const safe = addDays(startDate, Math.round(safeDuration * 7) - 1);
+      return { preset, complexity, team, buffer, lowDuration, highDuration, duration, safeDuration, startDate, target, safe, scale: duration / preset.weeks };
     }
 
     function renderChart(estimate) {
@@ -1022,17 +1045,19 @@
     }
 
     function render() {
-      if (!$("kickoffDate").value) $("kickoffDate").value = isoDate(nextMonday());
+      if (!$("startDate").value) $("startDate").value = isoDate(nextMonday());
+      $("estimateOutput").hidden = !hasAnalysis;
+      $("aiIntake").hidden = hasAnalysis && !$("aiResult").hidden;
       const estimate = calculate();
       const project = $("projectName").value.trim() || "New System";
 
       document.title = `${project} — Delivery Timeline`;
       $("pageTitle").textContent = `${project} Delivery Timeline`;
-      $("mvpEstimate").textContent = formatRange(...adjustedRange(presets.mvp, estimate.complexity, estimate.team));
-      $("productionEstimate").textContent = formatRange(...adjustedRange(presets.production, estimate.complexity, estimate.team));
-      $("scalableEstimate").textContent = formatRange(...adjustedRange(presets.scalable, estimate.complexity, estimate.team));
+      $("mvpEstimate").textContent = formatRange(...estimateRangeForTier("mvp", estimate.complexity, estimate.team));
+      $("productionEstimate").textContent = formatRange(...estimateRangeForTier("production", estimate.complexity, estimate.team));
+      $("scalableEstimate").textContent = formatRange(...estimateRangeForTier("scalable", estimate.complexity, estimate.team));
       $("durationValue").textContent = formatRange(estimate.lowDuration, estimate.highDuration);
-      $("durationNote").textContent = `Working plan: ${formatDuration(estimate.duration)} (${estimate.duration} weeks) · ${estimate.preset.name} · ${estimate.complexity.label} · ${estimate.team.label}`;
+      $("durationNote").textContent = `${aiEstimate ? "Gemini estimate" : "Working plan"}: ${formatDuration(estimate.duration)} (${estimate.duration} weeks) · ${estimate.preset.name} · ${estimate.complexity.label} · ${estimate.team.label}`;
       $("targetDate").textContent = formatDate(estimate.target);
       $("safeDate").textContent = formatDate(estimate.safe);
       $("safeNote").textContent = `Uses the upper estimate or ${estimate.buffer}% contingency, whichever is later (${formatDuration(estimate.safeDuration)}).`;
@@ -1097,17 +1122,34 @@
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Analysis failed.");
 
+        const aiLowDuration = Number(result.duration_low_weeks);
+        const aiHighDuration = Number(result.duration_high_weeks);
+        if (!Number.isFinite(aiLowDuration) || !Number.isFinite(aiHighDuration) || aiLowDuration > aiHighDuration) {
+          throw new Error("Gemini returned an invalid duration estimate. Please try again.");
+        }
+        aiEstimate = {
+          complexity: result.complexity,
+          delivery_level: result.delivery_level,
+          duration_low_weeks: aiLowDuration,
+          duration_high_weeks: aiHighDuration,
+        };
         $("complexity").value = result.complexity;
         $("tier-" + result.delivery_level).checked = true;
+        if ([10, 15, 20, 30].includes(Number(result.recommended_contingency))) {
+          $("buffer").value = String(result.recommended_contingency);
+        }
         $("aiDifficulty").textContent = `${result.complexity} complexity`;
         $("aiLevel").textContent = result.delivery_label;
         $("aiConfidence").textContent = `${result.confidence}% confidence`;
+        $("aiDuration").textContent = `AI range: ${formatRange(aiEstimate.duration_low_weeks, aiEstimate.duration_high_weeks)}`;
+        $("aiBuffer").textContent = `AI contingency: ${result.recommended_contingency}%`;
         $("aiSummary").textContent = result.summary;
         $("aiScope").textContent = result.suggested_scope;
         renderAnalysisList($("aiReasons"), result.reasons);
         renderAnalysisList($("aiRisks"), result.risks);
         renderAnalysisList($("aiMissing"), result.missing_specifications || []);
         $("aiResult").hidden = false;
+        hasAnalysis = true;
         $("aiStatus").classList.remove("loading");
         $("aiStatus").textContent = description.length < 40
           ? "Recommendation applied. Short input may lower confidence; confirm the missing details above."
@@ -1121,6 +1163,17 @@
         button.removeAttribute("aria-busy");
         button.textContent = "Analyze and generate Gantt chart";
       }
+    }
+
+    function editProject() {
+      hasAnalysis = false;
+      aiEstimate = null;
+      $("aiResult").hidden = true;
+      $("aiIntake").hidden = false;
+      $("aiStatus").classList.remove("loading");
+      $("aiStatus").textContent = "Update the project details, then analyze again.";
+      render();
+      $("projectName").focus();
     }
 
     async function copyText(text, confirmation) {
@@ -1143,11 +1196,12 @@
     controls.forEach((control) => control.addEventListener("input", render));
     document.querySelectorAll('input[name="tier"]').forEach((control) => control.addEventListener("change", render));
     $("analyzeProject").addEventListener("click", analyzeProject);
+    $("editProject").addEventListener("click", editProject);
 
     $("copySummary").addEventListener("click", () => {
       const estimate = calculate();
       const project = $("projectName").value.trim() || "New System";
-      const summary = `${project}: The ${estimate.preset.name} delivery estimate is ${formatRange(estimate.lowDuration, estimate.highDuration)} from kickoff on ${formatDate(estimate.kickoff)}. The working target is ${formatDate(estimate.target)}. For external commitment, we recommend ${formatDate(estimate.safe)}, using the upper estimate or ${estimate.buffer}% contingency, whichever is later. The dates assume approved requirements, timely feedback, and no major scope changes.`;
+      const summary = `${project}: The ${estimate.preset.name} delivery estimate is ${formatRange(estimate.lowDuration, estimate.highDuration)} from the start date of ${formatDate(estimate.startDate)}. The working target is ${formatDate(estimate.target)}. For external commitment, we recommend ${formatDate(estimate.safe)}, using the upper estimate or ${estimate.buffer}% contingency, whichever is later. The dates assume approved requirements, timely feedback, and no major scope changes.`;
       copyText(summary, "Client summary copied.");
     });
 
