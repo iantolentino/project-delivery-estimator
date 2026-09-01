@@ -127,6 +127,8 @@
 
     .ai-heading p { max-width: 720px; margin: 5px 0 0; color: var(--muted); font-size: .9rem; }
 
+    .ai-heading p strong { color: var(--ink); }
+
     .ai-project-field { max-width: 520px; margin-bottom: 14px; }
 
     textarea {
@@ -184,7 +186,7 @@
 
     .ai-result-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 20px;
     }
 
@@ -510,7 +512,31 @@
 
     .button.primary:hover { background: var(--primary-dark); }
 
-    .status { align-self: center; color: var(--accent); font-size: .84rem; font-weight: 700; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: center;
+      min-height: 24px;
+      color: var(--accent);
+      font-size: .84rem;
+      font-weight: 700;
+    }
+
+    .status.loading { color: var(--primary-dark); }
+
+    .status.loading::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      border: 2px solid var(--primary-soft);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     footer { margin-top: 20px; color: var(--muted); font-size: .78rem; text-align: center; }
 
@@ -588,7 +614,7 @@
       <div class="ai-heading">
         <div>
           <h2 id="ai-heading">Generate a delivery plan with AI</h2>
-          <p>Enter the project name and specification. Gemini will predict the complexity and delivery level, then generate the recommended Gantt chart and deadline range.</p>
+          <p><strong>Enter the project name and specification.</strong> Gemini will predict the complexity and delivery level, identify missing requirements, then generate the recommended Gantt chart and deadline range.</p>
         </div>
       </div>
       <div class="ai-project-field">
@@ -597,7 +623,7 @@
       </div>
       <label for="projectBrief">Project description</label>
       <textarea id="projectBrief" maxlength="5000" required placeholder="Example: A web-based inventory and sales system for three branches, with user roles, purchase orders, barcode scanning, reports, email notifications, and accounting integration."></textarea>
-      <p class="chart-note" style="margin: 8px 0 0;">The description is sent to Google Gemini for analysis. Do not include passwords, API keys, or confidential personal data.</p>
+      <p class="chart-note" style="margin: 8px 0 0;">Short descriptions are accepted, but more detail improves confidence. The description is sent to Google Gemini for analysis. Do not include passwords, API keys, or confidential personal data.</p>
       <div class="ai-actions">
         <button class="button primary" id="analyzeProject" type="button">Analyze and generate Gantt chart</button>
         <span class="status" id="aiStatus" role="status" aria-live="polite"></span>
@@ -618,6 +644,10 @@
           <div>
             <h3>Delivery risks</h3>
             <ul class="ai-list" id="aiRisks"></ul>
+          </div>
+          <div>
+            <h3>Missing specification to confirm</h3>
+            <ul class="ai-list" id="aiMissing"></ul>
           </div>
         </div>
         <p class="ai-scope"><strong>Suggested scope:</strong> <span id="aiScope"></span></p>
@@ -1037,8 +1067,8 @@
         $("projectName").focus();
         return;
       }
-      if (description.length < 40) {
-        $("aiStatus").textContent = "Add at least 40 characters to the project specification.";
+      if (description.length < 10) {
+        $("aiStatus").textContent = "Add a few words (at least 10 characters) so Gemini can analyze the project.";
         $("projectBrief").focus();
         return;
       }
@@ -1050,8 +1080,10 @@
 
       const button = $("analyzeProject");
       button.disabled = true;
-      button.textContent = "Generating plan…";
-      $("aiStatus").textContent = "Gemini is reviewing the project scope.";
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "Analyzing with Gemini...";
+      $("aiStatus").classList.add("loading");
+      $("aiStatus").textContent = "Analyzing with Gemini...";
 
       try {
         const response = await fetch("/api/analyze", {
@@ -1074,13 +1106,19 @@
         $("aiScope").textContent = result.suggested_scope;
         renderAnalysisList($("aiReasons"), result.reasons);
         renderAnalysisList($("aiRisks"), result.risks);
+        renderAnalysisList($("aiMissing"), result.missing_specifications || []);
         $("aiResult").hidden = false;
-        $("aiStatus").textContent = "Recommendation applied to the timeline.";
+        $("aiStatus").classList.remove("loading");
+        $("aiStatus").textContent = description.length < 40
+          ? "Recommendation applied. Short input may lower confidence; confirm the missing details above."
+          : "Recommendation applied to the timeline.";
         render();
       } catch (error) {
+        $("aiStatus").classList.remove("loading");
         $("aiStatus").textContent = error.message || "Unable to analyze the project.";
       } finally {
         button.disabled = false;
+        button.removeAttribute("aria-busy");
         button.textContent = "Analyze and generate Gantt chart";
       }
     }

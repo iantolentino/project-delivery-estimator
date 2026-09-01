@@ -61,8 +61,8 @@ module.exports = async function handler(request, response) {
   if (projectName.length < 2) {
     return send(response, 422, { error: "Enter a project name." });
   }
-  if (description.length < 40 || description.length > 5000) {
-    return send(response, 422, { error: "Describe the project using 40 to 5,000 characters." });
+  if (description.length < 10 || description.length > 5000) {
+    return send(response, 422, { error: "Describe the project using 10 to 5,000 characters." });
   }
 
   const apiKey = String(process.env.GEMINI_API_KEY || "").trim();
@@ -80,15 +80,16 @@ module.exports = async function handler(request, response) {
       summary: { type: "string" },
       reasons: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
       risks: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
+      missing_specifications: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
       suggested_scope: { type: "string" },
     },
-    required: ["complexity", "delivery_level", "confidence", "summary", "reasons", "risks", "suggested_scope"],
+    required: ["complexity", "delivery_level", "confidence", "summary", "reasons", "risks", "missing_specifications", "suggested_scope"],
   };
 
   const instructions = `You are a senior software estimator helping a solo developer assess a proposed information system.
 Classify complexity as exactly simple, standard, or complex. Recommend exactly one delivery level: mvp, production, or scalable.
-Consider workflows, user roles, integrations, data sensitivity, payments, real-time features, mobile or offline needs, reporting, migration, compliance, expected scale, and ambiguity.
-Be conservative and never promise a deadline. The delivery plan will use these solo-developer ranges: MVP 10-14 weeks, production-ready 4-6 months, scalable 6-10 months.
+Consider workflows, user roles, integrations, data sensitivity, payments, real-time features, mobile or offline needs, reporting, migration, compliance, expected scale, and ambiguity. Identify 2 to 5 missing specifications that could materially change the estimate; do not invent answers for unknowns.
+Be conservative and never promise a deadline. Short specifications are allowed, but missing detail should lower confidence and be called out in missing_specifications. The delivery plan will use these solo-developer ranges: MVP 10-14 weeks, production-ready 4-6 months, scalable 6-10 months.
 Return concise, client-safe language in the requested JSON schema.`;
 
   const controller = new AbortController();
@@ -126,8 +127,9 @@ Return concise, client-safe language in the requested JSON schema.`;
     const deliveryLevel = String(analysis.delivery_level || "").toLowerCase();
     const reasons = cleanList(analysis.reasons);
     const risks = cleanList(analysis.risks);
+    const missingSpecifications = cleanList(analysis.missing_specifications);
 
-    if (!ALLOWED_COMPLEXITY.has(complexity) || !ALLOWED_LEVELS.has(deliveryLevel) || reasons.length < 2 || risks.length < 2) {
+    if (!ALLOWED_COMPLEXITY.has(complexity) || !ALLOWED_LEVELS.has(deliveryLevel) || reasons.length < 2 || risks.length < 2 || missingSpecifications.length < 2) {
       return send(response, 502, { error: "Gemini returned an incomplete recommendation. Please try again." });
     }
 
@@ -139,6 +141,7 @@ Return concise, client-safe language in the requested JSON schema.`;
       summary: String(analysis.summary || "").trim().slice(0, 600),
       reasons,
       risks,
+      missing_specifications: missingSpecifications,
       suggested_scope: String(analysis.suggested_scope || "").trim().slice(0, 800),
     });
   } catch (error) {
