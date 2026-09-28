@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <meta name="description" content="Interactive software delivery timeline and deadline estimator for MVP, production-ready, and scalable systems.">
   <title>System Delivery Timeline</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -25,7 +26,44 @@
       --build: #0891b2;
       --assurance: #d97706;
       --release: #059669;
+      --on-primary: #ffffff;
+      --on-primary-muted: #d4d4d8;
+      --on-primary-soft: #e4e4e7;
+      --safe-border: #6ee7b7;
+      --safe-ink: #065f46;
+      --on-accent: #ffffff;
+      --focus-ring: rgba(24, 24, 27, .22);
       --shadow: 0 1px 2px rgba(9, 9, 11, .05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --primary: #fafafa;
+        --primary-dark: #ffffff;
+        --primary-soft: #27272a;
+        --accent: #2dd4bf;
+        --accent-soft: #134e4a;
+        --ink: #fafafa;
+        --muted: #a1a1aa;
+        --surface: #18181b;
+        --background: #09090b;
+        --subtle: #1f1f23;
+        --border: #2e2e33;
+        --on-primary: #18181b;
+        --on-primary-muted: #3f3f46;
+        --on-primary-soft: #52525b;
+        --safe-border: #115e59;
+        --safe-ink: #5eead4;
+        --on-accent: #042f2e;
+        --focus-ring: rgba(250, 250, 250, .3);
+        --planning: #60a5fa;
+        --design: #a78bfa;
+        --build: #22d3ee;
+        --assurance: #fbbf24;
+        --release: #34d399;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+      }
     }
 
     * { box-sizing: border-box; }
@@ -58,7 +96,7 @@
     }
 
     :focus-visible {
-      outline: 3px solid rgba(24, 24, 27, .22);
+      outline: 3px solid var(--focus-ring);
       outline-offset: 2px;
     }
 
@@ -165,6 +203,37 @@
     }
 
     .ai-result-head h3 { margin: 0; font-size: 1.05rem; }
+
+    .analysis-pill.demo-pill { background: var(--accent); color: var(--on-accent); }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .stat-tile {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--subtle);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .stat-value { color: var(--ink); font-size: 1.1rem; font-weight: 800; letter-spacing: -.01em; }
+
+    .stat-value.capitalize { text-transform: capitalize; }
 
     .analysis-pill {
       display: inline-flex;
@@ -289,6 +358,7 @@
     }
 
     .tier-card {
+      position: relative;
       display: block;
       min-height: 132px;
       margin: 0;
@@ -302,6 +372,25 @@
 
     .tier-card:hover { border-color: var(--primary); transform: translateY(-1px); }
 
+    .tier-option input:not(:checked) + .tier-card.recommended {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    .tier-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--on-accent);
+      font-size: .64rem;
+      font-weight: 800;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
     .tier-option input:checked + .tier-card {
       border: 2px solid var(--primary);
       background: var(--primary-soft);
@@ -309,7 +398,7 @@
     }
 
     .tier-option input:focus-visible + .tier-card {
-      outline: 3px solid rgba(24, 24, 27, .22);
+      outline: 3px solid var(--focus-ring);
       outline-offset: 2px;
     }
 
@@ -339,12 +428,12 @@
     .summary-card.primary {
       background: var(--primary);
       border-color: var(--primary);
-      color: #ffffff;
+      color: var(--on-primary);
     }
 
     .summary-card.safe {
       background: var(--accent-soft);
-      border-color: #6ee7b7;
+      border-color: var(--safe-border);
     }
 
     .summary-label {
@@ -356,7 +445,7 @@
       text-transform: uppercase;
     }
 
-    .primary .summary-label { color: #d4d4d8; }
+    .primary .summary-label { color: var(--on-primary-muted); }
 
     .summary-value {
       margin: 0;
@@ -368,9 +457,9 @@
 
     .summary-note { margin: 10px 0 0; color: var(--muted); font-size: .88rem; }
 
-    .primary .summary-note { color: #e4e4e7; }
+    .primary .summary-note { color: var(--on-primary-soft); }
 
-    .safe .summary-value { color: #065f46; }
+    .safe .summary-value { color: var(--safe-ink); }
 
     .timeline-panel { padding: 24px; }
 
@@ -409,7 +498,7 @@
       width: 3px;
       height: 3px;
       border-radius: 50%;
-      background: #ffffff;
+      background: var(--on-primary);
     }
 
     .chart-head, .task-row {
@@ -440,7 +529,7 @@
     .task-row {
       align-items: center;
       min-height: 58px;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid var(--border);
     }
 
     .task-info {
@@ -462,9 +551,9 @@
     .track {
       position: relative;
       height: 34px;
-      border-left: 1px solid #e2e8f0;
-      border-right: 1px solid #e2e8f0;
-      background-image: repeating-linear-gradient(to right, transparent 0, transparent calc((100% / var(--weeks)) - 1px), #e2e8f0 calc((100% / var(--weeks)) - 1px), #e2e8f0 calc(100% / var(--weeks)));
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background-image: repeating-linear-gradient(to right, transparent 0, transparent calc((100% / var(--weeks)) - 1px), var(--border) calc((100% / var(--weeks)) - 1px), var(--border) calc(100% / var(--weeks)));
     }
 
     .bar {
@@ -485,7 +574,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #ffffff;
+      background: var(--on-primary);
     }
 
     .mobile-range { display: none; color: var(--muted); font-size: .75rem; }
@@ -542,7 +631,7 @@
 
     .button:hover { border-color: var(--primary); background: var(--primary-soft); }
 
-    .button.primary { border-color: var(--primary); background: var(--primary); color: #ffffff; }
+    .button.primary { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
 
     .button.primary:hover { background: var(--primary-dark); }
 
@@ -576,6 +665,7 @@
 
     @media (max-width: 900px) {
       .field-grid { grid-template-columns: 1fr 1fr; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
       .summary-grid { grid-template-columns: 1fr; }
       .summary-card { min-height: auto; }
       .chart-head, .task-row { grid-template-columns: minmax(220px, .9fr) minmax(380px, 1.6fr); }
@@ -608,6 +698,28 @@
 
     @media print {
       @page { size: landscape; margin: 10mm; }
+      :root {
+        color-scheme: light;
+        --primary: #18181b;
+        --primary-dark: #09090b;
+        --primary-soft: #f4f4f5;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+        --ink: #09090b;
+        --muted: #52525b;
+        --surface: #ffffff;
+        --background: #ffffff;
+        --subtle: #f4f4f5;
+        --border: #cbd5e1;
+        --on-primary: #ffffff;
+        --on-primary-muted: #d4d4d8;
+        --on-primary-soft: #e4e4e7;
+        --safe-border: #6ee7b7;
+        --safe-ink: #065f46;
+        --on-accent: #ffffff;
+        --focus-ring: rgba(24, 24, 27, .22);
+        --shadow: none;
+      }
       body { background: #ffffff; font-size: 11px; }
       .page { width: 100%; padding: 0; }
       .hero { margin-bottom: 12px; }
@@ -658,17 +770,32 @@
       <p class="chart-note" style="margin: 8px 0 0;">Sent to Google Gemini — don't include passwords or confidential data.</p>
       <div class="ai-actions">
         <button class="button primary" id="analyzeProject" type="button">Analyze project</button>
+        <button class="button" id="demoAnalysis" type="button">Try demo analysis</button>
         <span class="status" id="aiStatus" role="status" aria-live="polite"></span>
       </div>
       </div>
       <div class="ai-result" id="aiResult" hidden>
         <div class="ai-result-head">
           <h3>AI recommendation</h3>
-          <span class="analysis-pill" id="aiDifficulty"></span>
-          <span class="analysis-pill" id="aiLevel"></span>
-          <span class="analysis-pill" id="aiConfidence"></span>
-          <span class="analysis-pill" id="aiDuration"></span>
-          <span class="analysis-pill" id="aiBuffer"></span>
+          <span class="analysis-pill demo-pill" id="aiDemoPill" hidden>Demo</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <span class="stat-label">Complexity</span>
+            <span class="stat-value capitalize" id="aiDifficulty"></span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Duration</span>
+            <span class="stat-value" id="aiDuration"></span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Confidence</span>
+            <span class="stat-value" id="aiConfidence"></span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Contingency</span>
+            <span class="stat-value" id="aiBuffer"></span>
+          </div>
         </div>
         <p class="ai-summary" id="aiSummary"></p>
         <div class="ai-fold-grid">
@@ -723,6 +850,7 @@
         <div class="tier-option">
           <input id="tier-mvp" name="tier" type="radio" value="mvp">
           <label class="tier-card" for="tier-mvp">
+            <span class="tier-badge" id="badge-mvp" hidden>Recommended</span>
             <span class="tier-name">MVP</span>
             <span class="tier-weeks" id="mvpEstimate">10–14 weeks</span>
             <span class="tier-detail">Core workflows · essential security · launch-ready</span>
@@ -731,6 +859,7 @@
         <div class="tier-option">
           <input id="tier-production" name="tier" type="radio" value="production" checked>
           <label class="tier-card" for="tier-production">
+            <span class="tier-badge" id="badge-production" hidden>Recommended</span>
             <span class="tier-name">Production-ready</span>
             <span class="tier-weeks" id="productionEstimate">4–6 months</span>
             <span class="tier-detail">Full workflows · hardened security · QA · monitoring</span>
@@ -739,6 +868,7 @@
         <div class="tier-option">
           <input id="tier-scalable" name="tier" type="radio" value="scalable">
           <label class="tier-card" for="tier-scalable">
+            <span class="tier-badge" id="badge-scalable" hidden>Recommended</span>
             <span class="tier-name">Scalable</span>
             <span class="tier-weeks" id="scalableEstimate">6–10 months</span>
             <span class="tier-detail">Performance · observability · scale validation</span>
@@ -907,6 +1037,7 @@
     const $ = (id) => document.getElementById(id);
     let hasAnalysis = false;
     let aiEstimate = null;
+    let isDemoAnalysis = false;
     const controls = [$("projectName"), $("startDate"), $("complexity"), $("team"), $("buffer")];
 
     function localDate(value) {
@@ -990,6 +1121,7 @@
       if (query.get("project")) $("projectName").value = query.get("project").slice(0, 80);
       if (/^\d{4}-\d{2}-\d{2}$/.test(query.get("start") || "")) $("startDate").value = query.get("start");
       hasAnalysis = query.get("ready") === "1";
+      isDemoAnalysis = hasAnalysis && query.get("demo") === "1";
       if (complexityOptions[query.get("complexity")]) $("complexity").value = query.get("complexity");
       if (query.get("v") === "2" && teamOptions[query.get("team")]) $("team").value = query.get("team");
       if (["10", "15", "20", "30"].includes(query.get("buffer"))) $("buffer").value = query.get("buffer");
@@ -1005,6 +1137,7 @@
       query.set("complexity", $("complexity").value);
       query.set("team", $("team").value);
       query.set("buffer", $("buffer").value);
+      if (hasAnalysis && isDemoAnalysis) query.set("demo", "1");
       try {
         history.replaceState(null, "", `${location.pathname}?${query.toString()}`);
       } catch (error) {
@@ -1107,6 +1240,91 @@
       if (count) count.textContent = `(${items.length})`;
       const fold = element.closest("details");
       if (fold) fold.hidden = items.length === 0;
+      if (element.id === "aiReasons" && aiEstimate) {
+        ["mvp", "production", "scalable"].forEach((tier) => {
+          const badge = $("badge-" + tier);
+          if (badge) badge.hidden = tier !== aiEstimate.delivery_level;
+        });
+      }
+    }
+
+    const BUFFER_LABELS = { 10: "Stable", 15: "Recommended", 20: "Evolving", 30: "High uncertainty" };
+    const DEMO_DELAY_MS = 900;
+
+    function demoAnalysis(projectName, description) {
+      const text = `${projectName} ${description}`.toLowerCase();
+      const hasPayments = /(payment|billing|checkout|subscription)/.test(text);
+      const hasIntegrations = /(integration|accounting|erp|sync|third-party)/.test(text);
+      const hasRichFeatures = /(realtime|real-time|chat|tracking|notification|mobile|offline|barcode|hardware|report|dashboard|analytics|role|roles|admin|audit|permission)/.test(text);
+      const hasHeavyScale = /(thousands|nationwide|enterprise|high traffic|multiple branches|multi-branch)/.test(text);
+      const isSimple = /(portfolio|landing|blog|brochure|menu|gallery|resume)/.test(text) && !hasRichFeatures && !hasPayments && !hasIntegrations;
+
+      const complexity = (hasPayments || hasIntegrations) ? "complex" : isSimple ? "simple" : "standard";
+      const deliveryLevel = complexity === "complex" && (hasHeavyScale || /(realtime|real-time|tracking|offline|barcode)/.test(text))
+        ? "scalable"
+        : isSimple ? "mvp" : "production";
+      const contingency = complexity === "complex" ? (hasHeavyScale ? 30 : 20) : isSimple ? 10 : 15;
+      const base = { mvp: [10, 14], production: [16, 24], scalable: [24, 40] }[deliveryLevel];
+      const confidence = description.length < 60 ? 62 : description.length < 200 ? 74 : 85;
+
+      return {
+        demo: true,
+        complexity,
+        delivery_level: deliveryLevel,
+        delivery_label: { mvp: "MVP recommended", production: "Production-ready recommended", scalable: "Scalable recommended" }[deliveryLevel],
+        confidence,
+        duration_low_weeks: base[0],
+        duration_high_weeks: base[1],
+        recommended_contingency: contingency,
+        summary: `Demo analysis: a ${complexity} project with a ${deliveryLevel === "mvp" ? "focused" : deliveryLevel} scope. Connect a Gemini API key for a real analysis.`,
+        reasons: [
+          complexity === "complex" ? "Payments or external integrations add build and testing time" : isSimple ? "Small, well-understood scope with standard patterns" : "Standard web workflows with familiar patterns",
+          description.length < 200 ? "Short specification limits estimate precision" : "Detailed specification supports a tighter range"
+        ],
+        risks: [
+          "Scope growth after approval is the most common schedule risk",
+          complexity === "complex" ? "Third-party availability affects integration deadlines" : "Late content or credential handoff can delay QA"
+        ],
+        missing_specifications: [
+          "Expected number of users and peak concurrency",
+          "Reporting and export requirements",
+          "Who provides design assets and content"
+        ],
+        suggested_scope: `Demo scope: core workflows, authentication, and reporting for a ${complexity} build. Replace this with a Gemini analysis for a tailored scope.`
+      };
+    }
+
+    function applyAnalysis(result) {
+      isDemoAnalysis = Boolean(result.demo);
+      const aiLowDuration = Number(result.duration_low_weeks);
+      const aiHighDuration = Number(result.duration_high_weeks);
+      if (!Number.isFinite(aiLowDuration) || !Number.isFinite(aiHighDuration) || aiLowDuration > aiHighDuration) {
+        throw new Error("The analysis returned an invalid duration estimate. Please try again.");
+      }
+      aiEstimate = {
+        complexity: result.complexity,
+        delivery_level: result.delivery_level,
+        duration_low_weeks: aiLowDuration,
+        duration_high_weeks: aiHighDuration,
+      };
+      $("complexity").value = result.complexity;
+      $("tier-" + result.delivery_level).checked = true;
+      if ([10, 15, 20, 30].includes(Number(result.recommended_contingency))) {
+        $("buffer").value = String(result.recommended_contingency);
+      }
+      $("aiDemoPill").hidden = !isDemoAnalysis;
+      $("aiDifficulty").textContent = result.complexity;
+      $("aiDuration").textContent = formatRange(aiEstimate.duration_low_weeks, aiEstimate.duration_high_weeks);
+      $("aiConfidence").textContent = `${result.confidence}%`;
+      $("aiBuffer").textContent = `+${result.recommended_contingency}% ${BUFFER_LABELS[result.recommended_contingency] || ""}`.trim();
+      $("aiSummary").textContent = result.summary;
+      $("aiScope").textContent = result.suggested_scope;
+      renderAnalysisList($("aiReasons"), result.reasons);
+      renderAnalysisList($("aiRisks"), result.risks);
+      renderAnalysisList($("aiMissing"), result.missing_specifications || []);
+      $("aiResult").hidden = false;
+      hasAnalysis = true;
+      render();
     }
 
     async function analyzeProject() {
@@ -1124,7 +1342,7 @@
       }
 
       if (location.protocol === "file:") {
-        $("aiStatus").textContent = "Open this page through localhost or cPanel to use AI analysis.";
+        runDemoAnalysis();
         return;
       }
 
@@ -1147,38 +1365,12 @@
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Analysis failed.");
 
-        const aiLowDuration = Number(result.duration_low_weeks);
-        const aiHighDuration = Number(result.duration_high_weeks);
-        if (!Number.isFinite(aiLowDuration) || !Number.isFinite(aiHighDuration) || aiLowDuration > aiHighDuration) {
-          throw new Error("Gemini returned an invalid duration estimate. Please try again.");
-        }
-        aiEstimate = {
-          complexity: result.complexity,
-          delivery_level: result.delivery_level,
-          duration_low_weeks: aiLowDuration,
-          duration_high_weeks: aiHighDuration,
-        };
-        $("complexity").value = result.complexity;
-        $("tier-" + result.delivery_level).checked = true;
-        if ([10, 15, 20, 30].includes(Number(result.recommended_contingency))) {
-          $("buffer").value = String(result.recommended_contingency);
-        }
-        $("aiDifficulty").textContent = `${result.complexity} complexity`;
-        $("aiLevel").textContent = result.delivery_label;
-        $("aiConfidence").textContent = `${result.confidence}% confidence`;
-        $("aiDuration").textContent = `AI range: ${formatRange(aiEstimate.duration_low_weeks, aiEstimate.duration_high_weeks)}`;
-        $("aiBuffer").textContent = `AI contingency: ${result.recommended_contingency}%`;
-        $("aiSummary").textContent = result.summary;
-        $("aiScope").textContent = result.suggested_scope;
-        renderAnalysisList($("aiReasons"), result.reasons);
-        renderAnalysisList($("aiRisks"), result.risks);
-        renderAnalysisList($("aiMissing"), result.missing_specifications || []);
-        $("aiResult").hidden = false;
-        hasAnalysis = true;
+        applyAnalysis(result);
         $("aiStatus").classList.remove("loading");
         $("aiStatus").textContent = description.length < 40
           ? "Applied — review missing details below."
           : "Applied to the timeline.";
+        if (isDemoAnalysis) $("aiStatus").textContent = "Demo analysis applied — not sent to Gemini.";
         render();
       } catch (error) {
         $("aiStatus").classList.remove("loading");
@@ -1190,9 +1382,44 @@
       }
     }
 
+    async function runDemoAnalysis() {
+      const projectName = $("projectName").value.trim();
+      const description = $("projectBrief").value.trim();
+      if (projectName.length < 2) {
+        $("aiStatus").textContent = "Enter the project name first.";
+        $("projectName").focus();
+        return;
+      }
+      if (description.length < 10) {
+        $("aiStatus").textContent = "Add at least 10 characters describing the project.";
+        $("projectBrief").focus();
+        return;
+      }
+      const button = $("demoAnalysis");
+      button.disabled = true;
+      button.textContent = "Analyzing…";
+      $("aiStatus").classList.add("loading");
+      $("aiStatus").textContent = "Analyzing (local demo)…";
+      await new Promise((resolve) => setTimeout(resolve, DEMO_DELAY_MS));
+      try {
+        applyAnalysis(demoAnalysis(projectName, description));
+        $("aiStatus").classList.remove("loading");
+        $("aiStatus").textContent = "Demo analysis applied — not sent to Gemini.";
+      } catch (error) {
+        $("aiStatus").classList.remove("loading");
+        $("aiStatus").textContent = error.message || "Demo analysis failed.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Try demo analysis";
+      }
+    }
+
     function editProject() {
       hasAnalysis = false;
       aiEstimate = null;
+      isDemoAnalysis = false;
+      $("aiDemoPill").hidden = true;
+      ["mvp", "production", "scalable"].forEach((tier) => { $("badge-" + tier).hidden = true; });
       $("aiResult").hidden = true;
       $("aiIntake").hidden = false;
       $("aiStatus").classList.remove("loading");
@@ -1204,6 +1431,7 @@
     controls.forEach((control) => control.addEventListener("input", render));
     document.querySelectorAll('input[name="tier"]').forEach((control) => control.addEventListener("change", render));
     $("analyzeProject").addEventListener("click", analyzeProject);
+    $("demoAnalysis").addEventListener("click", runDemoAnalysis);
     $("editProject").addEventListener("click", editProject);
 
     readQuery();
