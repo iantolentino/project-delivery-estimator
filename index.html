@@ -814,6 +814,7 @@
         </div>
         <p class="ai-scope"><strong>Suggested scope:</strong> <span id="aiScope"></span></p>
         <div class="ai-actions">
+          <button class="button" id="exportPng" type="button">Export PNG</button>
           <button class="button" id="editProject" type="button">Edit project</button>
         </div>
       </div>
@@ -941,6 +942,7 @@
     <footer>Planning estimate only — confirm final dates after requirements are approved.</footer>
   </main>
 
+  <script src="lib/estimate.js"></script>
   <script>
     const presets = {
       mvp: {
@@ -1034,74 +1036,17 @@
       Assurance: "var(--assurance)", Release: "var(--release)"
     };
 
+    const { localDate, isoDate, addDays, nextMonday, formatDate, formatDuration, formatRange, formatRelativeRange, adjustedWeeks, adjustedRange, demoAnalysis, encodeStateToQuery, decodeStateFromQuery, BUFFER_LABELS } = window.Estimate;
+
     const $ = (id) => document.getElementById(id);
     let hasAnalysis = false;
     let aiEstimate = null;
     let isDemoAnalysis = false;
+    let lastAnalysisResult = null;
     const controls = [$("projectName"), $("startDate"), $("complexity"), $("team"), $("buffer")];
-
-    function localDate(value) {
-      const [year, month, day] = value.split("-").map(Number);
-      return new Date(year, month - 1, day, 12);
-    }
-
-    function isoDate(date) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    }
-
-    function addDays(date, days) {
-      const result = new Date(date);
-      result.setDate(result.getDate() + days);
-      return result;
-    }
-
-    function formatDate(date, short = false) {
-      return new Intl.DateTimeFormat("en", short
-        ? { month: "short", day: "numeric" }
-        : { month: "short", day: "numeric", year: "numeric" }
-      ).format(date);
-    }
-
-    function formatDuration(weeks) {
-      if (weeks < 12) return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
-      const months = Math.round((weeks / 4) * 10) / 10;
-      return `${months} ${months === 1 ? "month" : "months"}`;
-    }
-
-    function formatRange(lowWeeks, highWeeks) {
-      if (highWeeks < 16) return `${lowWeeks}–${highWeeks} weeks`;
-      const lowMonths = Math.round((lowWeeks / 4) * 10) / 10;
-      const highMonths = Math.round((highWeeks / 4) * 10) / 10;
-      return `${lowMonths}–${highMonths} months`;
-    }
-
-    function formatRelativeRange(startWeek, endWeek, useMonths) {
-      const start = useMonths ? Math.floor(startWeek / 4) + 1 : Math.floor(startWeek) + 1;
-      const end = useMonths ? Math.max(start, Math.ceil(endWeek / 4)) : Math.max(start, Math.ceil(endWeek));
-      const unit = useMonths ? "Month" : "Week";
-      return start === end ? `${unit} ${start}` : `${unit} ${start} – ${unit} ${end}`;
-    }
-
-    function nextMonday() {
-      const date = new Date();
-      date.setHours(12, 0, 0, 0);
-      const days = (8 - date.getDay()) % 7 || 7;
-      return addDays(date, days);
-    }
 
     function selectedTier() {
       return document.querySelector('input[name="tier"]:checked').value;
-    }
-
-    function adjustedWeeks(baseWeeks, complexity, team) {
-      return Math.ceil(baseWeeks * complexity.factor * team.factor * 2) / 2;
-    }
-
-    function adjustedRange(preset, complexity, team) {
-      return preset.soloRange.map((weeks) => adjustedWeeks(weeks, complexity, team));
     }
 
     function estimateRangeForTier(tier, complexity, team) {
@@ -1115,31 +1060,41 @@
     }
 
     function readQuery() {
-      const query = new URLSearchParams(location.search);
-      const tier = query.get("tier");
-      if (presets[tier]) $("tier-" + tier).checked = true;
-      if (query.get("project")) $("projectName").value = query.get("project").slice(0, 80);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(query.get("start") || "")) $("startDate").value = query.get("start");
-      hasAnalysis = query.get("ready") === "1";
-      isDemoAnalysis = hasAnalysis && query.get("demo") === "1";
-      if (complexityOptions[query.get("complexity")]) $("complexity").value = query.get("complexity");
-      if (query.get("v") === "2" && teamOptions[query.get("team")]) $("team").value = query.get("team");
-      if (["10", "15", "20", "30"].includes(query.get("buffer"))) $("buffer").value = query.get("buffer");
+      const state = decodeStateFromQuery(new URLSearchParams(location.search));
+      if (state.project) $("projectName").value = state.project;
+      if (state.start) $("startDate").value = state.start;
+      if (state.tier) $("tier-" + state.tier).checked = true;
+      if (state.complexity) $("complexity").value = state.complexity;
+      if (state.team) $("team").value = state.team;
+      if (state.buffer) $("buffer").value = String(state.buffer);
+      hasAnalysis = state.hasAnalysis;
+      isDemoAnalysis = state.isDemo;
+      if (state.brief) $("projectBrief").value = state.brief.slice(0, 5000);
+      if (state.analysis) {
+        try {
+          applyAnalysis(state.analysis);
+        } catch (error) {
+          hasAnalysis = false;
+        }
+      }
     }
 
     function updateQuery() {
-      const query = new URLSearchParams();
-      query.set("project", $("projectName").value.trim() || "New System");
-      query.set("v", "2");
-      query.set("tier", selectedTier());
-      query.set("start", $("startDate").value);
-      if (hasAnalysis) query.set("ready", "1");
-      query.set("complexity", $("complexity").value);
-      query.set("team", $("team").value);
-      query.set("buffer", $("buffer").value);
-      if (hasAnalysis && isDemoAnalysis) query.set("demo", "1");
+      const queryString = encodeStateToQuery({
+        project: $("projectName").value.trim() || "New System",
+        start: $("startDate").value,
+        tier: selectedTier(),
+        complexity: $("complexity").value,
+        team: $("team").value,
+        buffer: Number($("buffer").value),
+        hasAnalysis,
+        isDemo: isDemoAnalysis,
+        brief: $("projectBrief").value.trim().slice(0, 2000),
+        aiEstimate,
+        analysis: lastAnalysisResult,
+      });
       try {
-        history.replaceState(null, "", `${location.pathname}?${query.toString()}`);
+        history.replaceState(null, "", `${location.pathname}?${queryString}`);
       } catch (error) {
         // Local file previews can block URL updates; hosted copies support them.
       }
@@ -1248,51 +1203,7 @@
       }
     }
 
-    const BUFFER_LABELS = { 10: "Stable", 15: "Recommended", 20: "Evolving", 30: "High uncertainty" };
     const DEMO_DELAY_MS = 900;
-
-    function demoAnalysis(projectName, description) {
-      const text = `${projectName} ${description}`.toLowerCase();
-      const hasPayments = /(payment|billing|checkout|subscription)/.test(text);
-      const hasIntegrations = /(integration|accounting|erp|sync|third-party)/.test(text);
-      const hasRichFeatures = /(realtime|real-time|chat|tracking|notification|mobile|offline|barcode|hardware|report|dashboard|analytics|role|roles|admin|audit|permission)/.test(text);
-      const hasHeavyScale = /(thousands|nationwide|enterprise|high traffic|multiple branches|multi-branch)/.test(text);
-      const isSimple = /(portfolio|landing|blog|brochure|menu|gallery|resume)/.test(text) && !hasRichFeatures && !hasPayments && !hasIntegrations;
-
-      const complexity = (hasPayments || hasIntegrations) ? "complex" : isSimple ? "simple" : "standard";
-      const deliveryLevel = complexity === "complex" && (hasHeavyScale || /(realtime|real-time|tracking|offline|barcode)/.test(text))
-        ? "scalable"
-        : isSimple ? "mvp" : "production";
-      const contingency = complexity === "complex" ? (hasHeavyScale ? 30 : 20) : isSimple ? 10 : 15;
-      const base = { mvp: [10, 14], production: [16, 24], scalable: [24, 40] }[deliveryLevel];
-      const confidence = description.length < 60 ? 62 : description.length < 200 ? 74 : 85;
-
-      return {
-        demo: true,
-        complexity,
-        delivery_level: deliveryLevel,
-        delivery_label: { mvp: "MVP recommended", production: "Production-ready recommended", scalable: "Scalable recommended" }[deliveryLevel],
-        confidence,
-        duration_low_weeks: base[0],
-        duration_high_weeks: base[1],
-        recommended_contingency: contingency,
-        summary: `Demo analysis: a ${complexity} project with a ${deliveryLevel === "mvp" ? "focused" : deliveryLevel} scope. Connect a Gemini API key for a real analysis.`,
-        reasons: [
-          complexity === "complex" ? "Payments or external integrations add build and testing time" : isSimple ? "Small, well-understood scope with standard patterns" : "Standard web workflows with familiar patterns",
-          description.length < 200 ? "Short specification limits estimate precision" : "Detailed specification supports a tighter range"
-        ],
-        risks: [
-          "Scope growth after approval is the most common schedule risk",
-          complexity === "complex" ? "Third-party availability affects integration deadlines" : "Late content or credential handoff can delay QA"
-        ],
-        missing_specifications: [
-          "Expected number of users and peak concurrency",
-          "Reporting and export requirements",
-          "Who provides design assets and content"
-        ],
-        suggested_scope: `Demo scope: core workflows, authentication, and reporting for a ${complexity} build. Replace this with a Gemini analysis for a tailored scope.`
-      };
-    }
 
     function applyAnalysis(result) {
       isDemoAnalysis = Boolean(result.demo);
@@ -1306,7 +1217,9 @@
         delivery_level: result.delivery_level,
         duration_low_weeks: aiLowDuration,
         duration_high_weeks: aiHighDuration,
+        confidence: Math.max(0, Math.min(100, Number(result.confidence) || 0)),
       };
+      lastAnalysisResult = result;
       $("complexity").value = result.complexity;
       $("tier-" + result.delivery_level).checked = true;
       if ([10, 15, 20, 30].includes(Number(result.recommended_contingency))) {
@@ -1418,6 +1331,7 @@
       hasAnalysis = false;
       aiEstimate = null;
       isDemoAnalysis = false;
+      lastAnalysisResult = null;
       $("aiDemoPill").hidden = true;
       ["mvp", "production", "scalable"].forEach((tier) => { $("badge-" + tier).hidden = true; });
       $("aiResult").hidden = true;
@@ -1428,9 +1342,138 @@
       $("projectName").focus();
     }
 
+    function svgElement(tag, attributes) {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+      return element;
+    }
+
+    function buildGanttSvg(estimate) {
+      const labelWidth = 250;
+      const trackWidth = 920;
+      const rowHeight = 38;
+      const headHeight = 46;
+      const displayWeeks = Math.ceil(estimate.duration);
+      const useMonths = estimate.duration >= 12;
+      const width = labelWidth + trackWidth;
+      const height = headHeight + estimate.preset.tasks.length * rowHeight;
+      const phaseFill = {
+        Planning: "#2563eb", Design: "#7c3aed", Build: "#0891b2",
+        Assurance: "#d97706", Release: "#059669",
+      };
+      const svg = svgElement("svg", {
+        viewBox: `0 0 ${width} ${height}`,
+        width,
+        height,
+        xmlns: "http://www.w3.org/2000/svg",
+      });
+      for (let week = 0; week <= displayWeeks; week++) {
+        const x = labelWidth + (week / displayWeeks) * trackWidth;
+        svg.appendChild(svgElement("line", { x1: x, y1: headHeight - 10, x2: x, y2: height, stroke: "#e4e4e7", "stroke-width": 1 }));
+      }
+      for (let week = 0; week < displayWeeks; week++) {
+        if (useMonths && week % 4 !== 0) continue;
+        if (!useMonths && displayWeeks > 14 && week % 2 !== 0) continue;
+        const text = svgElement("text", { x: labelWidth + (week / displayWeeks) * trackWidth + 5, y: 18, "font-size": 11, fill: "#71717a", "font-family": "Arial, sans-serif" });
+        text.textContent = useMonths ? `Month ${Math.floor(week / 4) + 1}` : `Week ${week + 1}`;
+        svg.appendChild(text);
+      }
+      estimate.preset.tasks.forEach((task, index) => {
+        const [phase, name, , baseStart, baseEnd, critical] = task;
+        const y = headHeight + index * rowHeight;
+        svg.appendChild(svgElement("line", { x1: 0, y1: y, x2: width, y2: y, stroke: "#e4e4e7", "stroke-width": 1 }));
+        const phaseText = svgElement("text", { x: 0, y: y + 15, "font-size": 9, fill: "#71717a", "font-family": "Arial, sans-serif", "font-weight": "bold", "letter-spacing": "0.06em" });
+        phaseText.textContent = phase.toUpperCase();
+        svg.appendChild(phaseText);
+        const nameText = svgElement("text", { x: 0, y: y + 30, "font-size": 12, fill: "#09090b", "font-family": "Arial, sans-serif", "font-weight": "600" });
+        nameText.textContent = name;
+        svg.appendChild(nameText);
+        const start = baseStart * estimate.scale;
+        const end = Math.min(baseEnd * estimate.scale, estimate.duration);
+        const barX = labelWidth + (start / displayWeeks) * trackWidth;
+        const barWidth = Math.max(((end - start) / displayWeeks) * trackWidth, 8);
+        svg.appendChild(svgElement("rect", { x: barX, y: y + 9, width: barWidth, height: 20, rx: 5, fill: phaseFill[phase] || "#09090b" }));
+        if (critical) {
+          svg.appendChild(svgElement("circle", { cx: barX + barWidth - 10, cy: y + 19, r: 3, fill: "#ffffff" }));
+        }
+      });
+      return { svg, width, height };
+    }
+
+    async function exportPng() {
+      const button = $("exportPng");
+      button.disabled = true;
+      button.textContent = "Exporting…";
+      try {
+        const estimate = calculate();
+        const project = $("projectName").value.trim() || "New System";
+        const scale = 2;
+        const width = 1200;
+        const { svg, width: svgWidth, height: svgHeight } = buildGanttSvg(estimate);
+        const chartWidth = width - 80;
+        const chartHeight = Math.round(svgHeight * (chartWidth / svgWidth));
+        const canvas = document.createElement("canvas");
+        canvas.width = width * scale;
+        canvas.height = (180 + chartHeight + 64) * scale;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas is not supported in this browser.");
+        ctx.scale(scale, scale);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, 180 + chartHeight + 64);
+        ctx.fillStyle = "#09090b";
+        ctx.font = "700 26px Arial, sans-serif";
+        ctx.fillText(`${project} — Delivery Estimate`, 40, 56);
+        ctx.fillStyle = "#71717a";
+        ctx.font = "12px Arial, sans-serif";
+        ctx.fillText(`Generated ${formatDate(new Date())} · planning estimate, not a fixed-price commitment`, 40, 78);
+        const stats = [
+          ["Delivery level", estimate.preset.name],
+          ["Duration", formatRange(estimate.lowDuration, estimate.highDuration)],
+          ["Target date", formatDate(estimate.target)],
+          ["Safe date", formatDate(estimate.safe)],
+        ];
+        stats.forEach(([label, value], index) => {
+          const x = 40 + index * 285;
+          ctx.fillStyle = "#f4f4f5";
+          ctx.fillRect(x, 96, 265, 62);
+          ctx.fillStyle = "#71717a";
+          ctx.font = "700 10px Arial, sans-serif";
+          ctx.fillText(label.toUpperCase(), x + 14, 116);
+          ctx.fillStyle = "#09090b";
+          ctx.font = "700 20px Arial, sans-serif";
+          ctx.fillText(value, x + 14, 144);
+        });
+        const image = await new Promise((resolve) => {
+          const element = new Image();
+          element.onload = () => resolve(element);
+          element.onerror = () => resolve(null);
+          element.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+        });
+        if (!image) throw new Error("Unable to render the chart.");
+        ctx.drawImage(image, 40, 180, chartWidth, chartHeight);
+        ctx.fillStyle = "#71717a";
+        ctx.font = "11px Arial, sans-serif";
+        ctx.fillText(`Team: ${estimate.team.label} · Complexity: ${estimate.complexity.label} · Contingency +${estimate.buffer}% · White dot marks critical path`, 40, 180 + chartHeight + 40);
+        const link = document.createElement("a");
+        const slug = project.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "delivery-estimate";
+        link.download = `${slug}-estimate.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      } catch (error) {
+        button.textContent = "Export failed";
+        setTimeout(() => { button.textContent = "Export PNG"; }, 2000);
+        return;
+      } finally {
+        button.disabled = false;
+        if (button.textContent === "Exporting…") button.textContent = "Export PNG";
+      }
+      button.textContent = "Export PNG";
+    }
+
     controls.forEach((control) => control.addEventListener("input", render));
     document.querySelectorAll('input[name="tier"]').forEach((control) => control.addEventListener("change", render));
     $("analyzeProject").addEventListener("click", analyzeProject);
+    $("exportPng").addEventListener("click", exportPng);
     $("demoAnalysis").addEventListener("click", runDemoAnalysis);
     $("editProject").addEventListener("click", editProject);
 
