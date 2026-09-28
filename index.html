@@ -126,10 +126,6 @@
 
     .ai-heading h2 { margin: 0; font-size: 1.2rem; }
 
-    .ai-heading p { max-width: 720px; margin: 5px 0 0; color: var(--muted); font-size: .9rem; }
-
-    .ai-heading p strong { color: var(--ink); }
-
     .ai-project-field { max-width: 520px; margin-bottom: 14px; }
 
     textarea {
@@ -185,17 +181,64 @@
 
     .ai-summary { margin: 0 0 14px; color: var(--muted); }
 
-    .ai-result-grid {
+    .ai-fold-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
+      gap: 10px;
     }
 
-    .ai-result-grid h3 { margin: 0 0 7px; font-size: .9rem; }
+    .ai-fold {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--subtle);
+    }
 
-    .ai-list { margin: 0; padding-left: 20px; color: var(--muted); font-size: .86rem; }
+    .ai-fold summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: .86rem;
+      font-weight: 700;
+      color: var(--ink);
+      list-style: none;
+    }
 
-    .ai-list li + li { margin-top: 5px; }
+    .ai-fold summary::-webkit-details-marker { display: none; }
+
+    .ai-fold summary::after {
+      content: "+";
+      margin-left: auto;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .ai-fold[open] summary::after { content: "–"; }
+
+    .fold-count { color: var(--muted); font-weight: 700; }
+
+    .ai-fold ul { margin: 0; padding: 0 14px 12px; list-style: none; }
+
+    .ai-fold li {
+      position: relative;
+      padding-left: 14px;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .ai-fold li + li { margin-top: 5px; }
+
+    .ai-fold li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: .55em;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
 
     .ai-scope { margin: 14px 0 0; color: var(--muted); font-size: .86rem; }
 
@@ -226,17 +269,9 @@
       padding: 9px 12px;
     }
 
-    .tier-heading {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: baseline;
-      margin: 24px 0 12px;
-    }
+    .section-heading h2 { margin: 0; font-size: 1.15rem; }
 
-    .tier-heading h2, .section-heading h2 { margin: 0; font-size: 1.15rem; }
-
-    .tier-heading p, .section-heading p { margin: 0; color: var(--muted); font-size: .9rem; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: .9rem; }
 
     .tier-grid {
       display: grid;
@@ -286,7 +321,7 @@
 
     .buffer-row {
       margin-top: 16px;
-      grid-template-columns: minmax(180px, 1fr) 3fr;
+      grid-template-columns: minmax(220px, 1fr);
     }
 
     .summary-grid {
@@ -362,6 +397,19 @@
       height: 10px;
       border-radius: 3px;
       background: var(--swatch);
+    }
+
+    .legend i.critical-dot { position: relative; background: var(--primary); }
+
+    .legend i.critical-dot::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #ffffff;
     }
 
     .chart-head, .task-row {
@@ -459,31 +507,23 @@
 
     .outcome-panel h2 { margin: 0 0 12px; font-size: 1.05rem; }
 
-    .outcome-list {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px 18px;
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
       margin: 0;
       padding: 0;
       list-style: none;
     }
 
-    .outcome-list li {
-      position: relative;
-      padding-left: 20px;
-      color: var(--muted);
-      font-size: .88rem;
-    }
-
-    .outcome-list li::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: .45em;
-      width: 8px;
-      height: 8px;
-      border: 2px solid var(--accent);
-      border-radius: 50%;
+    .chip-list li {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--subtle);
+      color: var(--ink);
+      font-size: .84rem;
+      font-weight: 600;
     }
 
     .assumption-list { margin: 0; padding-left: 20px; color: var(--muted); font-size: .88rem; }
@@ -557,9 +597,7 @@
       .page { width: min(100% - 20px, 1180px); padding-top: 24px; }
       .hero, .section-heading { display: block; }
       .controls, .timeline-panel, .outcome-panel { padding: 18px; }
-      .field-grid, .buffer-row, .tier-grid, .outcomes, .outcome-list, .ai-result-grid { grid-template-columns: 1fr; }
-      .tier-heading { display: block; }
-      .tier-heading p { margin-top: 4px; }
+      .field-grid, .buffer-row, .tier-grid, .outcomes, .ai-fold-grid { grid-template-columns: 1fr; }
       .legend { margin-top: 12px; }
       .status { width: 100%; text-align: center; }
     }
@@ -599,7 +637,8 @@
       <div>
         <p class="eyebrow">Software delivery estimate</p>
         <h1 id="pageTitle">System Delivery Timeline</h1>
-        <p class="subtitle">A clear, dependency-aware schedule from approved scope to launch and post-release support.</p>
+        <p class="subtitle">From approved scope to launch — planned in weeks.</p>
+        
       </div>
     </header>
 
@@ -608,7 +647,6 @@
       <div class="ai-heading">
         <div>
           <h2 id="ai-heading">Generate a delivery plan with AI</h2>
-          <p><strong>Enter the project name and specification.</strong> Gemini will predict the complexity and delivery level, identify missing requirements, then generate the recommended Gantt chart and deadline range.</p>
         </div>
       </div>
       <div class="ai-project-field">
@@ -617,9 +655,9 @@
       </div>
       <label for="projectBrief">Project description</label>
       <textarea id="projectBrief" maxlength="5000" required placeholder="Example: A web-based inventory and sales system for three branches, with user roles, purchase orders, barcode scanning, reports, email notifications, and accounting integration."></textarea>
-      <p class="chart-note" style="margin: 8px 0 0;">Short descriptions are accepted, but more detail improves confidence. The description is sent to Google Gemini for analysis. Do not include passwords, API keys, or confidential personal data.</p>
+      <p class="chart-note" style="margin: 8px 0 0;">Sent to Google Gemini — don't include passwords or confidential data.</p>
       <div class="ai-actions">
-        <button class="button primary" id="analyzeProject" type="button">Analyze and generate Gantt chart</button>
+        <button class="button primary" id="analyzeProject" type="button">Analyze project</button>
         <span class="status" id="aiStatus" role="status" aria-live="polite"></span>
       </div>
       </div>
@@ -633,23 +671,23 @@
           <span class="analysis-pill" id="aiBuffer"></span>
         </div>
         <p class="ai-summary" id="aiSummary"></p>
-        <div class="ai-result-grid">
-          <div>
-            <h3>Complexity reasons</h3>
-            <ul class="ai-list" id="aiReasons"></ul>
-          </div>
-          <div>
-            <h3>Delivery risks</h3>
-            <ul class="ai-list" id="aiRisks"></ul>
-          </div>
-          <div>
-            <h3>Missing specification to confirm</h3>
-            <ul class="ai-list" id="aiMissing"></ul>
-          </div>
+        <div class="ai-fold-grid">
+          <details class="ai-fold">
+            <summary>Complexity drivers <span class="fold-count" id="aiReasonsCount"></span></summary>
+            <ul id="aiReasons"></ul>
+          </details>
+          <details class="ai-fold">
+            <summary>Delivery risks <span class="fold-count" id="aiRisksCount"></span></summary>
+            <ul id="aiRisks"></ul>
+          </details>
+          <details class="ai-fold">
+            <summary>Missing to confirm <span class="fold-count" id="aiMissingCount"></span></summary>
+            <ul id="aiMissing"></ul>
+          </details>
         </div>
         <p class="ai-scope"><strong>Suggested scope:</strong> <span id="aiScope"></span></p>
         <div class="ai-actions">
-          <button class="button" id="editProject" type="button">Edit project and re-analyze</button>
+          <button class="button" id="editProject" type="button">Edit project</button>
         </div>
       </div>
     </section>
@@ -680,17 +718,14 @@
         </div>
       </div>
 
-      <div class="tier-heading">
-        <h2>Adjust the AI recommendation</h2>
-        <p>Override the suggested delivery level only when the scope or available team changes</p>
-      </div>
+      <h2 class="sr-only">Delivery level</h2>
       <div class="tier-grid" role="radiogroup" aria-label="Delivery level">
         <div class="tier-option">
           <input id="tier-mvp" name="tier" type="radio" value="mvp">
           <label class="tier-card" for="tier-mvp">
             <span class="tier-name">MVP</span>
             <span class="tier-weeks" id="mvpEstimate">10–14 weeks</span>
-            <span class="tier-detail">Core workflows, essential security, launch-ready first version.</span>
+            <span class="tier-detail">Core workflows · essential security · launch-ready</span>
           </label>
         </div>
         <div class="tier-option">
@@ -698,7 +733,7 @@
           <label class="tier-card" for="tier-production">
             <span class="tier-name">Production-ready</span>
             <span class="tier-weeks" id="productionEstimate">4–6 months</span>
-            <span class="tier-detail">Complete workflows, hardened security, QA, UAT, and monitoring.</span>
+            <span class="tier-detail">Full workflows · hardened security · QA · monitoring</span>
           </label>
         </div>
         <div class="tier-option">
@@ -706,7 +741,7 @@
           <label class="tier-card" for="tier-scalable">
             <span class="tier-name">Scalable</span>
             <span class="tier-weeks" id="scalableEstimate">6–10 months</span>
-            <span class="tier-detail">Production scope plus performance, observability, resilience, and scale validation.</span>
+            <span class="tier-detail">Performance · observability · scale validation</span>
           </label>
         </div>
       </div>
@@ -721,7 +756,6 @@
             <option value="30">30% — high uncertainty</option>
           </select>
         </div>
-        <p class="chart-note" style="margin: 0 0 10px;">Use the target date for planning. Use the safe commitment date when communicating an external deadline.</p>
       </div>
     </section>
 
@@ -734,7 +768,7 @@
       <article class="panel summary-card primary">
         <p class="summary-label">Target delivery</p>
         <p class="summary-value" id="targetDate"></p>
-        <p class="summary-note">Expected completion when the approved scope stays stable.</p>
+        <p class="summary-note">Assumes stable scope.</p>
       </article>
       <article class="panel summary-card safe">
         <p class="summary-label">Safe commitment date</p>
@@ -755,26 +789,26 @@
           <span><i style="--swatch: var(--build)"></i>Build</span>
           <span><i style="--swatch: var(--assurance)"></i>Assurance</span>
           <span><i style="--swatch: var(--release)"></i>Release</span>
+          <span><i class="critical-dot"></i>Critical path</span>
         </div>
       </div>
       <div class="chart" id="chart" aria-live="polite"></div>
-      <p class="chart-note">Critical-path work is marked with a white dot. Tasks overlap where different roles can work in parallel; delays to requirements, core build, QA, or UAT usually move the final deadline.</p>
     </section>
 
     <section class="outcomes">
       <article class="panel outcome-panel">
-        <h2 id="includedHeading">What is included</h2>
-        <ul class="outcome-list" id="outcomeList"></ul>
+        <h2 id="includedHeading">Included</h2>
+        <ul class="chip-list" id="outcomeList"></ul>
       </article>
       <article class="panel outcome-panel">
-        <h2>Estimate assumptions</h2>
+        <h2>Assumptions</h2>
         <ul class="assumption-list" id="assumptionList"></ul>
       </article>
     </section>
 
     </div>
 
-    <footer>This is a planning estimate, not a fixed-price commitment. Final dates should be confirmed after requirements and acceptance criteria are approved.</footer>
+    <footer>Planning estimate only — confirm final dates after requirements are approved.</footer>
   </main>
 
   <script>
@@ -854,15 +888,15 @@
     };
 
     const complexityOptions = {
-      simple: { label: "simple system", factor: .85 },
-      standard: { label: "standard complexity", factor: 1 },
-      complex: { label: "complex system or external integrations", factor: 1.25 }
+      simple: { label: "simple", factor: .85 },
+      standard: { label: "standard", factor: 1 },
+      complex: { label: "complex", factor: 1.25 }
     };
 
     const teamOptions = {
-      solo: { label: "solo developer", factor: 1 },
-      small: { label: "small team with two developers", factor: .75 },
-      dedicated: { label: "dedicated team with three or more developers", factor: .6 }
+      solo: { label: "solo dev", factor: 1 },
+      small: { label: "2 devs", factor: .75 },
+      dedicated: { label: "3+ devs", factor: .6 }
     };
 
     const phaseColors = {
@@ -1044,19 +1078,19 @@
       $("productionEstimate").textContent = formatRange(...estimateRangeForTier("production", estimate.complexity, estimate.team));
       $("scalableEstimate").textContent = formatRange(...estimateRangeForTier("scalable", estimate.complexity, estimate.team));
       $("durationValue").textContent = formatRange(estimate.lowDuration, estimate.highDuration);
-      $("durationNote").textContent = `${aiEstimate ? "Gemini estimate" : "Working plan"}: ${formatDuration(estimate.duration)} (${estimate.duration} weeks) · ${estimate.preset.name} · ${estimate.complexity.label} · ${estimate.team.label}`;
+      $("durationNote").textContent = `${aiEstimate ? "AI estimate" : "Working plan"} · ${estimate.duration} weeks · ${estimate.preset.name} · ${estimate.team.label}`;
       $("targetDate").textContent = formatDate(estimate.target);
       $("safeDate").textContent = formatDate(estimate.safe);
-      $("safeNote").textContent = `Uses the upper estimate or ${estimate.buffer}% contingency, whichever is later (${formatDuration(estimate.safeDuration)}).`;
+      $("safeNote").textContent = `Upper estimate or +${estimate.buffer}% contingency`;
       $("timelineCaption").textContent = `${formatDuration(estimate.duration)} working plan · ${estimate.preset.name}`;
       $("includedHeading").textContent = `Included in ${estimate.preset.name}`;
       $("outcomeList").innerHTML = estimate.preset.outcomes.map((item) => `<li>${item}</li>`).join("");
       $("assumptionList").innerHTML = [
-        "Requirements and acceptance criteria are approved before build work begins.",
-        "Client feedback and approvals are returned within two business days.",
-        `The estimate assumes a ${estimate.team.label}.`,
-        "Third-party credentials, content, and production access are available when needed.",
-        "New features or major scope changes are estimated separately and may move the deadline."
+        `Team: ${estimate.team.label}`,
+        "Requirements approved before build",
+        "Feedback within 2 business days",
+        "Access and credentials ready when needed",
+        "Scope changes estimated separately"
       ].map((item) => `<li>${item}</li>`).join("");
 
       renderChart(estimate);
@@ -1069,6 +1103,10 @@
         entry.textContent = item;
         return entry;
       }));
+      const count = document.getElementById(`${element.id}Count`);
+      if (count) count.textContent = `(${items.length})`;
+      const fold = element.closest("details");
+      if (fold) fold.hidden = items.length === 0;
     }
 
     async function analyzeProject() {
@@ -1080,7 +1118,7 @@
         return;
       }
       if (description.length < 10) {
-        $("aiStatus").textContent = "Add a few words (at least 10 characters) so Gemini can analyze the project.";
+        $("aiStatus").textContent = "Add at least 10 characters describing the project.";
         $("projectBrief").focus();
         return;
       }
@@ -1093,9 +1131,9 @@
       const button = $("analyzeProject");
       button.disabled = true;
       button.setAttribute("aria-busy", "true");
-      button.textContent = "Analyzing with Gemini...";
+      button.textContent = "Analyzing…";
       $("aiStatus").classList.add("loading");
-      $("aiStatus").textContent = "Analyzing with Gemini...";
+      $("aiStatus").textContent = "Analyzing…";
 
       try {
         const response = await fetch("/api/analyze", {
@@ -1139,8 +1177,8 @@
         hasAnalysis = true;
         $("aiStatus").classList.remove("loading");
         $("aiStatus").textContent = description.length < 40
-          ? "Recommendation applied. Short input may lower confidence; confirm the missing details above."
-          : "Recommendation applied to the timeline.";
+          ? "Applied — review missing details below."
+          : "Applied to the timeline.";
         render();
       } catch (error) {
         $("aiStatus").classList.remove("loading");
@@ -1148,7 +1186,7 @@
       } finally {
         button.disabled = false;
         button.removeAttribute("aria-busy");
-        button.textContent = "Analyze and generate Gantt chart";
+        button.textContent = "Analyze project";
       }
     }
 
